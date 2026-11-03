@@ -1,0 +1,31 @@
+{
+  "expo": {
+    "name": "Taskify",
+    "slug": "gestion-de-projet-kanban",
+    "scheme": "taskify",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#F9F6F7"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#F9F6F7"
+      }
+    },
+    "plugins": [
+      "expo-sqlite"
+    ],
+    "extra": {
+      "mode": "local-demo"
+    }
+  }
+}
