@@ -7,6 +7,7 @@ import {palette} from '../../constants/theme';
 import {useAuthNavigation} from '../../hooks/useAppNavigation';
 import {useAuth} from '../../context/AuthContext';
 import {validEmail,validPassword} from '../../utils/validation';
+import {apiConfigured} from '../../config/api';
 export default function SignUpScreen(){
  const nav=useAuthNavigation(),{signUp}=useAuth();
  const[name,setName]=useState(''),[email,setEmail]=useState(''),[pass,setPass]=useState(''),[confirm,setConfirm]=useState(''),[accept,setAccept]=useState(false),[busy,setBusy]=useState(false);
@@ -15,14 +16,14 @@ export default function SignUpScreen(){
   setBusy(true);try{await signUp(name,email,pass);}catch(e){Alert.alert('Inscription impossible',e instanceof Error?e.message:'Erreur');}finally{setBusy(false);}
  };
  return <SafeAreaView style={{flex:1,backgroundColor:palette.page}}><ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled"><Pressable onPress={()=>nav.goBack()}><Text style={s.link}>‹ Retour</Text></Pressable>
- <Text style={s.logo}>● Taskify</Text><Text style={s.title}>Créer un compte</Text><Text style={s.desc}>Compte local sur ce téléphone pour le projet universitaire.</Text>
+ <Text style={s.logo}>● Taskify</Text><Text style={s.title}>Créer un compte</Text><Text style={s.desc}>{apiConfigured?'Créez un compte commun pour collaborer avec votre équipe.':'Compte local sur ce téléphone pour la démonstration.'}</Text>
  <Field label="Nom complet" value={name} onChangeText={setName} placeholder="Votre nom"/>
  <Field label="Adresse e-mail" value={email} onChangeText={setEmail} placeholder="nom@exemple.com" keyboardType="email-address"/>
  <Field label="Mot de passe (8+ caractères)" value={pass} onChangeText={setPass} secureTextEntry/>
  <Field label="Confirmer le mot de passe" value={confirm} onChangeText={setConfirm} secureTextEntry/>
  <Pressable onPress={()=>setAccept(v=>!v)}><Text style={s.agree}>{accept?'☑':'□'} J’accepte les Conditions Générales et la Politique de Confidentialité (documents de démonstration).</Text></Pressable>
- <Button title="Créer mon compte local →" loading={busy} disabled={busy} onPress={submit}/>
- <Text style={s.muted}>Aucun email n’est envoyé. Le compte n'existe que sur cet appareil ; les données sont conservées dans SQLite.</Text>
+ <Button title="Créer mon compte →" loading={busy} disabled={busy} onPress={submit}/>
+ <Text style={s.muted}>{apiConfigured?'Compte conservé sur le serveur partagé. Les invitations sont accessibles après connexion.':'Aucun e-mail envoyé. Compte uniquement sur cet appareil.'}</Text>
  <Pressable onPress={()=>nav.navigate('Terms')}><Text style={s.link}>Conditions générales à préparer</Text></Pressable>
  <Pressable onPress={()=>nav.navigate('Privacy')}><Text style={s.link}>Politique de confidentialité à préparer</Text></Pressable>
  </ScrollView></SafeAreaView>;

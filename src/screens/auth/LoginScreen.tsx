@@ -8,6 +8,7 @@ import {Field} from '../../components/ui/Field';
 import {useAuth} from '../../context/AuthContext';
 import {useAuthNavigation} from '../../hooks/useAppNavigation';
 import {DEMO_EMAIL,DEMO_PASSWORD} from '../../db/repositories/localAccountRepository';
+import {apiConfigured} from '../../config/api';
 export default function LoginScreen(){
  const nav=useAuthNavigation(),{login,enterDemo}=useAuth();
  const[email,setEmail]=useState(''),[password,setPassword]=useState(''),[busy,setBusy]=useState(false);
@@ -19,7 +20,7 @@ export default function LoginScreen(){
  <Field label="Mot de passe" value={password} onChangeText={setPassword} placeholder="••••••••" secureTextEntry/>
  <Pressable onPress={()=>nav.navigate('ForgotPassword')}><Text style={s.linkRight}>Mot de passe oublié ?</Text></Pressable>
  <Button title="Se connecter →" loading={busy} disabled={busy} onPress={submit}/>
- <Text style={s.info}>Comptes locaux à cet appareil uniquement. Aucun serveur distant.</Text>
+ <Text style={s.info}>{apiConfigured?'Connexion à votre espace partagé PostgreSQL.':'Mode local : ajoutez EXPO_PUBLIC_TASKIFY_API_URL pour activer les comptes partagés.'}</Text>
  <Button title="Explorer la démo locale" variant="soft" onPress={()=>{enterDemo().catch(()=>Alert.alert('Erreur','Impossible d’ouvrir la démo.'));}}/>
  <Text style={s.info}>Compte démo : {DEMO_EMAIL} / {DEMO_PASSWORD}</Text>
  <Pressable onPress={()=>nav.navigate('SignUp')}><Text style={s.bottom}>Pas encore de compte ? <Text style={s.link}>Créer un compte</Text></Text></Pressable>

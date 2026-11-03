@@ -25,6 +25,7 @@ import NewTaskScreen from '../screens/tasks/NewTaskScreen';
 import EditTaskScreen from '../screens/tasks/EditTaskScreen';
 import MembersPermissionsScreen from '../screens/members/MembersPermissionsScreen';
 import InviteMemberScreen from '../screens/members/InviteMemberScreen';
+import InvitationsInboxScreen from '../screens/members/InvitationsInboxScreen';
 import WorkspaceScreen from '../screens/profile/WorkspaceScreen';
 import PersonalInfoScreen from '../screens/profile/PersonalInfoScreen';
 import AppearanceScreen from '../screens/profile/AppearanceScreen';
@@ -62,6 +63,7 @@ function AppNavigator(){return <AppStack.Navigator screenOptions={screenOptions}
  <AppStack.Screen name="EditTask" component={EditTaskScreen}/>
  <AppStack.Screen name="MembersPermissions" component={MembersPermissionsScreen}/>
  <AppStack.Screen name="InviteMember" component={InviteMemberScreen}/>
+ <AppStack.Screen name="InvitationsInbox" component={InvitationsInboxScreen}/>
  <AppStack.Screen name="Workspace" component={WorkspaceScreen}/>
  <AppStack.Screen name="PersonalInfo" component={PersonalInfoScreen}/>
  <AppStack.Screen name="Appearance" component={AppearanceScreen}/>
