@@ -1,3 +1,4 @@
+import {useAuth} from '../../context/AuthContext';
 import React,{useState} from 'react';
 import {Text,TextInput,View,StyleSheet} from 'react-native';
 import {Screen} from '../../components/ui/Screen';
@@ -9,8 +10,8 @@ import {runtime} from '../../config/runtime';
 import {useAppNavigation} from '../../hooks/useAppNavigation';
 import {useData} from '../../context/DataContext';
 export default function MyTasksScreen(){
- const nav=useAppNavigation(),{data}=useData(),[scope,setScope]=useState<'mine'|'all'>('mine'),[query,setQuery]=useState('');
- const mine=(data?.tasks??[]).filter(t=>(scope==='all'||data?.assignees.some(a=>a.taskId===t.id&&a.userId===runtime.demoUserId))&&t.title.toLowerCase().includes(query.toLowerCase()));
+ const {user}=useAuth(),nav=useAppNavigation(),{data}=useData(),[scope,setScope]=useState<'mine'|'all'>('mine'),[query,setQuery]=useState('');
+ const mine=(data?.tasks??[]).filter(t=>(scope==='all'||data?.assignees.some(a=>a.taskId===t.id&&a.userId===(user?.id??runtime.demoUserId)))&&t.title.toLowerCase().includes(query.toLowerCase()));
  return <Screen title="Mes tâches"><Segmented value={scope} onChange={setScope} options={[{label:'Assignées à moi',value:'mine'},{label:'Toutes',value:'all'}]}/><TextInput placeholder="Rechercher une tâche..." placeholderTextColor={palette.muted} value={query} onChangeText={setQuery} style={s.search}/>
  <Text style={s.heading}>{mine.length} tâche(s)</Text>{mine.map(t=><TaskCard key={t.id} task={t} onPress={()=>nav.navigate('TaskDetails',{taskId:t.id})}/>)}
  {mine.length===0&&<Text style={s.empty}>Aucune tâche dans cette sélection.</Text>}<Button title="＋ Nouvelle tâche" onPress={()=>nav.navigate('NewTask')}/></Screen>;

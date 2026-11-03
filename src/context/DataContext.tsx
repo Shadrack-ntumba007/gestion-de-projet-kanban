@@ -7,6 +7,7 @@ import {insertTask,updateTask,deleteTask,toggleSubtask,createSubtask,createComme
 import {addStatus,editStatus,removeStatus} from '../db/repositories/statusRepository';
 import {markNotificationRead} from '../db/repositories/notificationRepository';
 import {runtime} from '../config/runtime';
+import {useAuth} from './AuthContext';
 import {canEdit,canManageMembers} from '../utils/permissions';
 type DataValue={
  data:AppSnapshot|null; loading:boolean; reload:()=>Promise<void>;
@@ -20,15 +21,15 @@ type DataValue={
 };
 const Context=createContext<DataValue|null>(null);
 export function DataProvider({children}:{children:ReactNode}){
- const db=useSQLiteContext();const[data,setData]=useState<AppSnapshot|null>(null);const[loading,setLoading]=useState(true);
+ const db=useSQLiteContext();const {user}=useAuth();const userId=user?.id??runtime.demoUserId;const[data,setData]=useState<AppSnapshot|null>(null);const[loading,setLoading]=useState(true);
  const reload=useCallback(async()=>{setData(await loadSnapshot(db));setLoading(false);},[db]);
- useEffect(()=>{reload().catch(()=>setLoading(false));},[reload]);
- const roleFor=useCallback((projectId:string)=>data?.members.find(m=>m.projectId===projectId&&m.userId===runtime.demoUserId)?.role,[data]);
+ useEffect(()=>{reload().catch(()=>setLoading(false));},[reload,userId]);
+ const roleFor=useCallback((projectId:string)=>data?.members.find(m=>m.projectId===projectId&&m.userId===userId)?.role,[data,userId]);
  const requireEdit=(projectId:string)=>{if(!canEdit(roleFor(projectId)))throw new Error('Droits insuffisants pour modifier ce projet.');};
  const changed=async(action:()=>Promise<void>)=>{await action();await reload();};
  const value=useMemo<DataValue>(()=>({
  data,loading,reload,roleFor,
- createProject:async p=>{if(!p.title.trim())throw new Error('Le titre est requis.');const id=await insertProject(db,p);await reload();return id;},
+ createProject:async p=>{if(!p.title.trim())throw new Error('Le titre est requis.');const id=await insertProject(db,p,userId);await reload();return id;},
  saveProject:async(id,p)=>{requireEdit(id);await changed(()=>updateProject(db,id,p));},
  createTask:async t=>{requireEdit(t.projectId);if(!t.title.trim())throw new Error('Le titre est requis.');const id=await insertTask(db,t);await reload();return id;},
  saveTask:async(id,t)=>{requireEdit(t.projectId);await changed(()=>updateTask(db,id,t));},
@@ -38,10 +39,10 @@ export function DataProvider({children}:{children:ReactNode}){
  deleteStatus:async id=>{const s=data?.statuses.find(x=>x.id===id);if(!s)throw new Error('État absent.');requireEdit(s.projectId);await changed(()=>removeStatus(db,id));},
  setSubtask:async(id,done)=>{const s=data?.subtasks.find(x=>x.id===id),t=data?.tasks.find(x=>x.id===s?.taskId);if(!t)throw new Error('Sous-tâche absente.');requireEdit(t.projectId);await changed(()=>toggleSubtask(db,id,done));},
  addSubtask:async(id,title)=>{const t=data?.tasks.find(x=>x.id===id);if(!t)throw new Error('Tâche absente.');requireEdit(t.projectId);if(!title.trim())return;await changed(()=>createSubtask(db,id,title));},
- addComment:async(id,body)=>{if(!body.trim())return;await changed(()=>createComment(db,id,runtime.demoUserId,body));},
+ addComment:async(id,body)=>{if(!body.trim())return;await changed(()=>createComment(db,id,userId,body));},
  readNotification:async id=>{await changed(()=>markNotificationRead(db,id));},
  setMemberRole:async(pid,uid,role)=>{if(!canManageMembers(roleFor(pid)))throw new Error('Droits insuffisants.');await changed(()=>updateProjectRole(db,pid,uid,role));},
- }),[db,data,loading,reload,roleFor]);
+ }),[db,data,loading,reload,roleFor,userId]);
  return <Context.Provider value={value}>{children}</Context.Provider>;
 }
 export function useData(){const ctx=useContext(Context);if(!ctx)throw new Error('DataProvider manquant');return ctx;}
