@@ -1,8 +1,18 @@
 image: node:26
-stages: [verify]
+
+stages:
+  - verify
+
 verify:
   stage: verify
   script:
+    # Application Expo
+    - npm install --no-audit --no-fund
+    - npm run typecheck
+    - npm test
+
+    # Serveur PostgreSQL
+    - cd server
     - npm install --no-audit --no-fund
     - npm run typecheck
     - npm test

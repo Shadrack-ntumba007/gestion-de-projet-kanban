@@ -10,7 +10,7 @@ export type AppStackParamList = {
   ProjectBoard:{projectId:string}; NewProject:undefined; EditProject:{projectId:string};
   ProjectSettings:{projectId:string}; StatusEditor:{projectId:string};
   TaskDetails:{taskId:string}; NewTask:{projectId?:string; statusId?:string}|undefined;
-  EditTask:{taskId:string}; MembersPermissions:{projectId:string}; InviteMember:{projectId:string};
+  EditTask:{taskId:string}; MembersPermissions:{projectId:string}; InviteMember:{projectId:string}; InvitationsInbox:undefined;
   Workspace:undefined; PersonalInfo:undefined; Appearance:undefined; StartupView:undefined;
   Search:undefined; Filters:undefined; NotificationSettings:undefined;
 };

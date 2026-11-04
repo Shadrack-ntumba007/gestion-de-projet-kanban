@@ -7,18 +7,22 @@ import {Button} from '../../components/ui/Button';
 import {Field} from '../../components/ui/Field';
 import {useAuth} from '../../context/AuthContext';
 import {useAuthNavigation} from '../../hooks/useAppNavigation';
+import {DEMO_EMAIL,DEMO_PASSWORD} from '../../db/repositories/localAccountRepository';
+import {apiConfigured} from '../../config/api';
 export default function LoginScreen(){
- const nav=useAuthNavigation(),{enterDemo}=useAuth();
- const [email,setEmail]=useState(''),[password,setPassword]=useState('');
+ const nav=useAuthNavigation(),{login,enterDemo}=useAuth();
+ const[email,setEmail]=useState(''),[password,setPassword]=useState(''),[busy,setBusy]=useState(false);
+ const submit=async()=>{if(busy)return;setBusy(true);try{await login(email,password);}catch(e){Alert.alert('Connexion impossible',e instanceof Error?e.message:'Erreur');}finally{setBusy(false);}};
  return <SafeAreaView style={s.safe}><KeyboardAvoidingView style={{flex:1}} behavior={Platform.OS==='ios'?'padding':undefined}>
  <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled"><View style={s.logo}><Ionicons name="checkmark-done" color={palette.white} size={42}/></View>
  <Text style={s.brand}>Taskify</Text><Text style={s.title}>Bon retour 👋</Text><Text style={s.desc}>Connectez-vous pour retrouver vos projets.</Text>
  <Field label="Email" value={email} onChangeText={setEmail} placeholder="votre.email@exemple.com" keyboardType="email-address"/>
  <Field label="Mot de passe" value={password} onChangeText={setPassword} placeholder="••••••••" secureTextEntry/>
  <Pressable onPress={()=>nav.navigate('ForgotPassword')}><Text style={s.linkRight}>Mot de passe oublié ?</Text></Pressable>
- <Button title="Se connecter →" onPress={()=>Alert.alert('Backend non configuré','La connexion avec identifiants nécessitera une API d’authentification. Utilisez le mode démo pour explorer l’application.')}/>
- <Text style={s.info}>Mode local : aucune connexion distante et aucun compte réel.</Text>
+ <Button title="Se connecter →" loading={busy} disabled={busy} onPress={submit}/>
+ <Text style={s.info}>{apiConfigured?'Connexion à votre espace partagé PostgreSQL.':'Mode local : ajoutez EXPO_PUBLIC_TASKIFY_API_URL pour activer les comptes partagés.'}</Text>
  <Button title="Explorer la démo locale" variant="soft" onPress={()=>{enterDemo().catch(()=>Alert.alert('Erreur','Impossible d’ouvrir la démo.'));}}/>
+ <Text style={s.info}>Compte démo : {DEMO_EMAIL} / {DEMO_PASSWORD}</Text>
  <Pressable onPress={()=>nav.navigate('SignUp')}><Text style={s.bottom}>Pas encore de compte ? <Text style={s.link}>Créer un compte</Text></Text></Pressable>
  </ScrollView></KeyboardAvoidingView></SafeAreaView>;
 }
