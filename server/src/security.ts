@@ -6,13 +6,13 @@ export function validEmail(email:string):boolean {return /^\S+@\S+\.\S+$/.test(e
 export function validPassword(pwd:string):boolean{return pwd.length>=8&&pwd.length<=128;}
 export async function hashPassword(pwd:string):Promise<string>{
   const salt=randomBytes(16).toString('hex');
-  const key=await scrypt(pwd,salt,64,{N:16384,r:8,p:1,maxmem:64*1024*1024}) as Buffer;
+  const key=await scrypt(pwd,salt,64) as Buffer;
   return `scrypt$${salt}$${key.toString('hex')}`;
 }
 export async function verifyPassword(pwd:string,stored:string):Promise<boolean>{
   const [kind,salt,hex]=stored.split('$');
   if(kind!=='scrypt'||!salt||!hex||!/^[a-f\d]{128}$/.test(hex))return false;
-  const given=await scrypt(pwd,salt,64,{N:16384,r:8,p:1,maxmem:64*1024*1024}) as Buffer;
+  const given=await scrypt(pwd,salt,64) as Buffer;
   return timingSafeEqual(given,Buffer.from(hex,'hex'));
 }
 export function newToken():string{return randomBytes(32).toString('base64url');}
