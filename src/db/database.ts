@@ -124,5 +124,33 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase): Promise<void> {
   if (currentVersion === 2) {
     await db.execAsync(SCHEMA_V3);
     await db.execAsync('PRAGMA user_version = 3');
+    currentVersion = 3;
+  }
+
+  // V4 : synchronise les IDENTITES fictives de demoData.ts sur les bases deja creees.
+  // N'efface aucun projet, tache, invitation ni compte local reel.
+  // Un compte cree via l'inscription locale n'est jamais modifie.
+  if (currentVersion === 3) {
+    await db.withTransactionAsync(async () => {
+      for (const user of demoUsers) {
+        await db.runAsync(
+          `UPDATE users SET name = ?
+           WHERE id = ?
+             AND NOT EXISTS (SELECT 1 FROM local_accounts WHERE user_id = users.id)`,
+          user.name, user.id,
+        );
+        await db.runAsync(
+          `UPDATE users SET email = ?
+           WHERE id = ?
+             AND NOT EXISTS (SELECT 1 FROM local_accounts WHERE user_id = users.id)
+             AND NOT EXISTS (
+               SELECT 1 FROM users AS other
+               WHERE lower(other.email) = lower(?) AND other.id <> users.id
+             )`,
+          user.email, user.id, user.email,
+        );
+      }
+    });
+    await db.execAsync('PRAGMA user_version = 4');
   }
 }
