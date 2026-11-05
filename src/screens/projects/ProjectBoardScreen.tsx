@@ -52,12 +52,12 @@ export default function ProjectBoardScreen() {
     .map(st => st.id);
   const canMove = !!project && canEdit(roleFor(project.id));
 
-  const boardRef = useRef<ScrollView>(null);
-  const pageScrollRef = useRef<ScrollView>(null);
+  const boardRef = useRef<React.ComponentRef<typeof ScrollView>>(null);
+  const pageScrollRef = useRef<React.ComponentRef<typeof ScrollView>>(null);
   const pageViewportRef = useRef<Rect>({ x: 0, y: 0, width: 0, height: 0 });
   const pageScrollYRef = useRef(0);
   const pageContentHeightRef = useRef(0);
-  const rootRef = useRef<View>(null);
+  const rootRef = useRef<React.ComponentRef<typeof View>>(null);
   const rootOriginRef = useRef({ x: 0, y: 0 });
   const viewportRef = useRef<Rect>({ x: 0, y: 0, width: 0, height: 0 });
   const columnsRef = useRef<Record<string, ColumnLayout>>({});
