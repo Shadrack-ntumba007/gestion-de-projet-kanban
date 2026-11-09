@@ -35,7 +35,7 @@ async function snapshot(user:Identity){
     pool.query(`SELECT DISTINCT u.id,u.full_name,u.email FROM app_users u JOIN workspace_members wm ON wm.user_id=u.id WHERE wm.workspace_id IN (SELECT workspace_id FROM workspace_members WHERE user_id=$1)`,[uid]),
     pool.query(`SELECT p.id AS project_id,wm.user_id,wm.role FROM projects p JOIN workspace_members wm ON wm.workspace_id=p.workspace_id WHERE p.id IN (${visibleProjects})`,[uid]),
     pool.query(`SELECT s.* FROM kanban_statuses s WHERE s.project_id IN (${visibleProjects}) ORDER BY s.position`,[uid]),
-    pool.query(`SELECT t.* FROM tasks t WHERE t.project_id IN (${visibleProjects}) ORDER BY t.created_at DESC`,[uid]),
+    pool.query(`SELECT t.* FROM tasks t LEFT JOIN task_kanban_order o ON o.task_id=t.id WHERE t.project_id IN (${visibleProjects}) ORDER BY t.project_id,t.status_id,COALESCE(o.position,2147483647),t.created_at,t.id`,[uid]),
     pool.query(`SELECT a.* FROM task_assignees a JOIN tasks t ON t.id=a.task_id WHERE t.project_id IN (${visibleProjects})`,[uid]),
     pool.query(`SELECT s.* FROM subtasks s JOIN tasks t ON t.id=s.task_id WHERE t.project_id IN (${visibleProjects}) ORDER BY s.position`,[uid]),
     pool.query(`SELECT c.* FROM task_comments c JOIN tasks t ON t.id=c.task_id WHERE t.project_id IN (${visibleProjects}) ORDER BY c.created_at`,[uid]),
@@ -98,9 +98,13 @@ export async function handleKanban(req:IncomingMessage,res:ServerResponse,user:I
   return send(res,200,{ok:true});
  }
  if(path==='/api/data/tasks'&&m==='POST'){
-  const b=await body(req);const pid=required(b.projectId,'Projet',40),sid=required(b.statusId,'État',40);
+  const b=await body(req);
+  const pid=required(b.projectId,'Projet',40);
   await requireEditor(uid,pid);
-  const st=await pool.query('SELECT 1 FROM kanban_statuses WHERE id=$1 AND project_id=$2',[sid,pid]);if(!st.rowCount)throw new HttpError(400,'État hors de ce projet.');
+  // KANBAN-01 : une tâche commence toujours dans le premier état du projet.
+  const firstStatus=await pool.query<{id:string}>(`SELECT id FROM kanban_statuses WHERE project_id=$1 ORDER BY position ASC,id ASC LIMIT 1`,[pid]);
+  if(!firstStatus.rows[0])throw new HttpError(409,'Ce projet ne possède aucun état Kanban.');
+  const sid=firstStatus.rows[0].id;
   const conn=await pool.connect();
   try{
    await conn.query('BEGIN');
@@ -108,6 +112,67 @@ export async function handleKanban(req:IncomingMessage,res:ServerResponse,user:I
    await conn.query('INSERT INTO task_assignees(task_id,user_id) VALUES($1,$2)',[r.rows[0].id,uid]);
    await conn.query('COMMIT');return send(res,201,{id:r.rows[0].id});
   }catch(e){await conn.query('ROLLBACK');throw e;}finally{conn.release();}
+ }
+ // KANBAN-02 : modifier uniquement le statut d'une tâche, sans écraser les autres champs.
+  // KANBAN-03 : deplacement et insertion ordonnee, sans reecrire la fiche.
+ const movingTaskId=idFrom(path,/^\/api\/data\/tasks\/([a-f\d-]{36})\/status$/i);
+ if(movingTaskId&&m==='PATCH'){
+  const pid=await taskProject(uid,movingTaskId,true);
+  const b=await body(req);
+  const sid=required(b.statusId,'État',40);
+  const beforeTaskId=b.beforeTaskId===undefined||b.beforeTaskId===null?null:str(b.beforeTaskId);
+  if(beforeTaskId!==null&&(!validUuid(beforeTaskId)||beforeTaskId===movingTaskId)){
+   throw new HttpError(400,'Position de dépôt invalide.');
+  }
+  const conn=await pool.connect();
+  try{
+   await conn.query('BEGIN');
+   // Verrou de projet : deux reordonnancements concurrents ne se melangent pas.
+   await conn.query('SELECT id FROM projects WHERE id=$1 FOR UPDATE',[pid]);
+   const task=await conn.query<{status_id:string}>(
+    'SELECT status_id FROM tasks WHERE id=$1 AND project_id=$2 FOR UPDATE',
+    [movingTaskId,pid]
+   );
+   if(!task.rows[0])throw new HttpError(404,'Tâche introuvable.');
+   const target=await conn.query(
+    'SELECT 1 FROM kanban_statuses WHERE id=$1 AND project_id=$2',[sid,pid]
+   );
+   if(!target.rowCount)throw new HttpError(400,'État hors de ce projet.');
+
+   const originalStatus=task.rows[0].status_id;
+   const idsIn=async(statusId:string):Promise<string[]>=>{
+    const result=await conn.query<{id:string}>(`
+     SELECT t.id FROM tasks t
+     LEFT JOIN task_kanban_order o ON o.task_id=t.id
+     WHERE t.project_id=$1 AND t.status_id=$2 AND t.id<>$3
+     ORDER BY COALESCE(o.position,2147483647),t.created_at,t.id
+    `,[pid,statusId,movingTaskId]);
+    return result.rows.map(row=>row.id);
+   };
+   const destination=await idsIn(sid);
+   const index=beforeTaskId===null?destination.length:destination.indexOf(beforeTaskId);
+   if(index<0)throw new HttpError(400,'La carte de référence ne se trouve pas dans la colonne cible.');
+   destination.splice(index,0,movingTaskId);
+   const origin=originalStatus!==sid?await idsIn(originalStatus):[];
+
+   await conn.query(
+    'UPDATE tasks SET status_id=$1,updated_at=now() WHERE id=$2 AND project_id=$3',
+    [sid,movingTaskId,pid]
+   );
+   const saveRanks=async(ids:string[]):Promise<void>=>{
+    for(let i=0;i<ids.length;i++){
+     await conn.query(`
+      INSERT INTO task_kanban_order(task_id,position) VALUES($1,$2)
+      ON CONFLICT(task_id) DO UPDATE SET position=EXCLUDED.position
+     `,[ids[i],i]);
+    }
+   };
+   await saveRanks(destination);
+   await saveRanks(origin);
+   await conn.query('COMMIT');
+   return send(res,200,{ok:true});
+  }catch(e){await conn.query('ROLLBACK');throw e;}
+  finally{conn.release();}
  }
  const taskId=idFrom(path,/^\/api\/data\/tasks\/([a-f\d-]{36})$/i);
  if(taskId&&(m==='PATCH'||m==='DELETE')){
