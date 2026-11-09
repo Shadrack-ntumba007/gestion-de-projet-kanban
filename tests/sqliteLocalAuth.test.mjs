@@ -10,7 +10,7 @@ function seed(d){
  d.prepare(`INSERT INTO project_members(project_id,user_id,role) VALUES(?,?,?)`).run('p','u','owner');
 }
 test('version 4 crée comptes et invitations locaux',()=>{
- const d=setup();try{assert.equal(DATABASE_VERSION,4);const names=d.prepare("SELECT name FROM sqlite_master WHERE type='table'").all().map(x=>x.name);assert.ok(names.includes('local_accounts'));assert.ok(names.includes('local_invitations'));}finally{d.close();}
+ const d=setup();try{assert.equal(DATABASE_VERSION,5);const names=d.prepare("SELECT name FROM sqlite_master WHERE type='table'").all().map(x=>x.name);assert.ok(names.includes('local_accounts'));assert.ok(names.includes('local_invitations'));}finally{d.close();}
 });
 test('une invitation en attente ne supprime pas les projets existants',()=>{
  const d=setup();try{seed(d);d.prepare('INSERT INTO local_invitations(id,project_id,email,role,created_at) VALUES(?,?,?,?,?)').run('i','p','test@example.com','editor','t');d.exec(SCHEMA_V3);assert.equal(d.prepare('SELECT count(*) n FROM projects').get().n,1);assert.equal(d.prepare('SELECT count(*) n FROM local_invitations').get().n,1);}finally{d.close();}

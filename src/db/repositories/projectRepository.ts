@@ -8,7 +8,17 @@ export async function insertProject(db:SQLiteDatabase,input:NewProject,ownerId:s
  await db.withTransactionAsync(async()=>{
   await db.runAsync('INSERT INTO projects(id,workspace_id,title,description,icon,priority,due_date,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)',id,runtime.workspaceId,input.title.trim(),input.description.trim(),input.icon,input.priority,input.dueDate,now,now);
   await db.runAsync('INSERT INTO project_members(project_id,user_id,role) VALUES(?,?,?)',id,ownerId,'owner');
-  for(const [i,name] of ['À faire','En cours','Terminé'].entries()) await db.runAsync('INSERT INTO statuses(id,project_id,name,color,position) VALUES(?,?,?,?,?)',createId('status'),id,name,statusColors[i],i);
+  for(const [position,name,color] of [
+   [0,'À faire',statusColors[0]],
+   [1,'En cours',statusColors[1]],
+   [2,'À valider','#FFE7B5'],
+   [3,'Terminé',statusColors[2]],
+  ] as const) {
+   await db.runAsync(
+    'INSERT INTO statuses(id,project_id,name,color,position) VALUES(?,?,?,?,?)',
+    createId('status'),id,name,color,position
+   );
+  }
  });
  return id;
 }

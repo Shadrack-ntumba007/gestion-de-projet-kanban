@@ -229,7 +229,41 @@ export default function ProjectBoardScreen() {
     busyRef.current = true;
     setSavingTaskId(task.id);
     try {
-      await moveTask(task.id, target.statusId, beforeTaskId);
+      const sourceStatus = orderedStatuses.find(
+  st => st.id === task.statusId
+);
+const destinationStatus = orderedStatuses.find(
+  st => st.id === target.statusId
+);
+
+if (!sourceStatus || !destinationStatus) {
+  throw new Error('État source ou destination introuvable.');
+}
+
+if (sourceStatus.id !== destinationStatus.id) {
+  const normalize = (name: string) =>
+    name.normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim()
+      .toLowerCase();
+
+  const from = normalize(sourceStatus.name);
+  const to = normalize(destinationStatus.name);
+
+  const allowed =
+    (from === 'a faire' && to === 'en cours') ||
+    (from === 'en cours' && to === 'a valider');
+
+  if (!allowed) {
+    throw new Error(
+      'Transition interdite. Respectez les étapes du workflow. ' +
+      'Pour approuver ou demander une correction, ' +
+      'ouvrez les détails de la tâche.'
+    );
+  }
+}
+
+await moveTask(task.id, target.statusId, beforeTaskId);
     } catch (error) {
       Alert.alert(
         'Déplacement impossible',

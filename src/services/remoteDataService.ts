@@ -74,8 +74,17 @@ export const saveRemoteTask = (
 
 // KANBAN-02 : déplacement d'une tâche.
 // Ne modifie que son statusId.
-export const moveRemoteTask = (taskId: string, statusId: string, beforeTaskId: string | null = null) =>
-  apiRequest<Ok>(`/api/data/tasks/${enc(taskId)}/status`, 'PATCH', { statusId, beforeTaskId });
+export const moveRemoteTask = (
+  taskId: string,
+  statusId: string,
+  beforeTaskId: string | null = null,
+  reason?: string
+) =>
+  apiRequest<Ok>(
+    `/api/data/tasks/${enc(taskId)}/status`,
+    'PATCH',
+    { statusId, beforeTaskId, reason }
+  );
 export const deleteRemoteTask = (id: string) =>
   apiRequest<Ok>(
     `/api/data/tasks/${enc(id)}`,

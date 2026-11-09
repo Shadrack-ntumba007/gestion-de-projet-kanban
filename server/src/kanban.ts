@@ -1,5 +1,6 @@
 import type {IncomingMessage,ServerResponse} from 'node:http';
 import {pool} from './db.ts';
+import type {PoolClient} from 'pg';
 import {HttpError,send,body,str,validUuid,required,priority,optionalDate,isoDate} from './http.ts';
 import type {Identity} from './server.ts';
 
@@ -54,6 +55,57 @@ async function snapshot(user:Identity){
     notifications:notifications.rows.map((n:any)=>({id:n.id,userId:n.user_id,title:n.title,body:n.body,createdAt:isoDate(n.created_at),read:n.is_read})),
   };
 }
+
+// KANBAN-05B : contrôle serveur obligatoire pour toutes les transitions de tâches.
+async function assertKanbanReviewTransition(
+  conn: PoolClient,
+  userId: string,
+  projectId: string,
+  taskId: string,
+  fromStatusId: string,
+  toStatusId: string,
+  rawReason: unknown
+): Promise<void> {
+  // Déplacement dans la même colonne : seul l'ordre des cartes peut changer.
+  if (fromStatusId === toStatusId) return;
+
+  const statuses = await conn.query<{ id: string; name: string }>(
+    'SELECT id, name FROM kanban_statuses WHERE project_id=$1 AND id IN ($2,$3)',
+    [projectId, fromStatusId, toStatusId]
+  );
+  const from = statuses.rows.find(s => s.id === fromStatusId);
+  const to = statuses.rows.find(s => s.id === toStatusId);
+  if (!from || !to) throw new HttpError(400, 'État source ou destination hors du projet.');
+
+  // Le rôle provient de PostgreSQL, jamais de la requête envoyée par le mobile.
+  const role = (await projectRole(userId, projectId)).role;
+  const responsible = role === 'owner' || role === 'admin';
+
+  if (from.name === 'À faire' && to.name === 'En cours') return;
+  if (from.name === 'En cours' && to.name === 'À valider') return;
+
+  if (from.name === 'À valider' && to.name === 'Terminé') {
+    if (!responsible) throw new HttpError(403, 'Seul un responsable peut approuver une tâche.');
+    return;
+  }
+
+  if (from.name === 'À valider' && to.name === 'En cours') {
+    if (!responsible) throw new HttpError(403, 'Seul un responsable peut demander une correction.');
+    const reason = typeof rawReason === 'string' ? rawReason.trim() : '';
+    if (!reason || reason.length > 2500) {
+      throw new HttpError(400, 'Indiquez une justification de correction (1 à 2500 caractères).');
+    }
+    // Le commentaire et la transition s'inscrivent dans la même transaction.
+    await conn.query(
+      'INSERT INTO task_comments(task_id,author_id,body) VALUES($1,$2,$3)',
+      [taskId, userId, 'Correction demandée : ' + reason]
+    );
+    return;
+  }
+
+  throw new HttpError(409, 'Transition interdite : suivez À faire → En cours → À valider → Terminé.');
+}
+
 function idFrom(path:string,expr:RegExp){return path.match(expr)?.[1]??null;}
 export async function handleKanban(req:IncomingMessage,res:ServerResponse,user:Identity,path:string):Promise<void>{
  const m=req.method;const uid=user.id;
@@ -67,7 +119,12 @@ export async function handleKanban(req:IncomingMessage,res:ServerResponse,user:I
   try{await conn.query('BEGIN');
     const created=await conn.query<{id:string}>(`INSERT INTO projects(workspace_id,title,description,icon,priority,due_date,created_by) VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING id`,[workspace,title,description,icon,pr,due,uid]);
     const pid=created.rows[0].id;
-    for(const [pos,name,color] of [[0,'À faire','#D4E9E7'],[1,'En cours','#E5DEFF'],[2,'Terminé','#FFD9D9']] as const){
+    for (const [pos, name, color] of [
+      [0, 'À faire', '#D4E9E7'],
+      [1, 'En cours', '#E5DEFF'],
+      [2, 'À valider', '#FFF0C2'],
+      [3, 'Terminé', '#FFD9D9'],
+    ] as const) {
       await conn.query(`INSERT INTO kanban_statuses(project_id,name,color,position) VALUES($1,$2,$3,$4)`,[pid,name,color,pos]);
     }
     await conn.query('COMMIT');return send(res,201,{id:pid});
@@ -89,6 +146,21 @@ export async function handleKanban(req:IncomingMessage,res:ServerResponse,user:I
  if(statusId&&(m==='PATCH'||m==='DELETE')){
   const r=await pool.query<{project_id:string}>(`SELECT project_id FROM kanban_statuses WHERE id=$1`,[statusId]);
   if(!r.rows[0])throw new HttpError(404,'État introuvable.');await requireEditor(uid,r.rows[0].project_id);
+
+  const canonical=await pool.query<{name:string}>(
+    'SELECT name FROM kanban_statuses WHERE id=$1',[statusId]
+  );
+  const originalName=canonical.rows[0]?.name;
+  if(originalName && ['À faire','En cours','À valider','Terminé'].includes(originalName)) {
+    if(m==='DELETE') throw new HttpError(409,'État obligatoire du workflow : suppression interdite.');
+    const b=await body(req);
+    if(required(b.name,'État',80)!==originalName) {
+      throw new HttpError(409,'État obligatoire du workflow : changement de nom interdit.');
+    }
+    await pool.query('UPDATE kanban_statuses SET color=$1 WHERE id=$2',
+      [required(b.color,'Couleur',25),statusId]);
+    return send(res,200,{ok:true});
+  }
   if(m==='PATCH'){const b=await body(req);await pool.query(`UPDATE kanban_statuses SET name=$1,color=$2 WHERE id=$3`,[required(b.name,'État',80),required(b.color,'Couleur',25),statusId]);}
   else {
     const r2=await pool.query('SELECT 1 FROM tasks WHERE status_id=$1 LIMIT 1',[statusId]);
@@ -140,6 +212,19 @@ export async function handleKanban(req:IncomingMessage,res:ServerResponse,user:I
    if(!target.rowCount)throw new HttpError(400,'État hors de ce projet.');
 
    const originalStatus=task.rows[0].status_id;
+   // KANBAN-04 : validation du déplacement
+   if (originalStatus !== sid) {
+    const statuses = await conn.query<{id:string;name:string}>(
+     'SELECT id,name FROM kanban_statuses WHERE project_id=$1',
+     [pid]
+    );
+    const from = statuses.rows.find(status => status.id === originalStatus)?.name;
+    const to = statuses.rows.find(status => status.id === sid)?.name;
+
+    if (to === 'Terminé' && from !== 'À valider') {
+     throw new HttpError(409,'Passez par « À valider » avant de terminer cette tâche.');
+    }
+   }
    const idsIn=async(statusId:string):Promise<string[]>=>{
     const result=await conn.query<{id:string}>(`
      SELECT t.id FROM tasks t
@@ -149,6 +234,7 @@ export async function handleKanban(req:IncomingMessage,res:ServerResponse,user:I
     `,[pid,statusId,movingTaskId]);
     return result.rows.map(row=>row.id);
    };
+   await assertKanbanReviewTransition(conn,uid,pid,movingTaskId,originalStatus,sid,b.reason);
    const destination=await idsIn(sid);
    const index=beforeTaskId===null?destination.length:destination.indexOf(beforeTaskId);
    if(index<0)throw new HttpError(400,'La carte de référence ne se trouve pas dans la colonne cible.');
@@ -181,8 +267,40 @@ export async function handleKanban(req:IncomingMessage,res:ServerResponse,user:I
   const b=await body(req);
   if(str(b.projectId)!==pid)throw new HttpError(400,'Déplacer une tâche entre projets n’est pas disponible.');
   const sid=required(b.statusId,'État',40);
-  const st=await pool.query('SELECT 1 FROM kanban_statuses WHERE id=$1 AND project_id=$2',[sid,pid]);if(!st.rowCount)throw new HttpError(400,'État hors du projet.');
-  await pool.query(`UPDATE tasks SET status_id=$1,title=$2,description=$3,priority=$4,start_date=$5,due_date=$6,updated_at=now() WHERE id=$7`,[sid,required(b.title,'Tâche',200),str(b.description).slice(0,4000),priority(b.priority),optionalDate(b.startDate),optionalDate(b.dueDate),taskId]);
+  const conn=await pool.connect();
+  try {
+   await conn.query('BEGIN');
+   await conn.query('SELECT id FROM projects WHERE id=$1 FOR UPDATE',[pid]);
+   const task=await conn.query<{status_id:string}>(
+    'SELECT status_id FROM tasks WHERE id=$1 AND project_id=$2 FOR UPDATE',
+    [taskId,pid]
+   );
+   if(!task.rows[0])throw new HttpError(404,'Tâche introuvable.');
+
+   const originalStatus=task.rows[0].status_id;
+   const statuses=await conn.query<{id:string;name:string}>(
+    'SELECT id,name FROM kanban_statuses WHERE project_id=$1 AND id IN ($2,$3)',
+    [pid,originalStatus,sid]
+   );
+   const from=statuses.rows.find(status=>status.id===originalStatus);
+   const to=statuses.rows.find(status=>status.id===sid);
+   if(!to)throw new HttpError(400,'État hors du projet.');
+   await assertKanbanReviewTransition(conn,uid,pid,taskId,originalStatus,sid,b.reason);
+   if(originalStatus!==sid && to.name==='Terminé' && from?.name!=='À valider'){
+    throw new HttpError(409,'Passez par « À valider » avant de terminer cette tâche.');
+   }
+
+   await conn.query(
+    `UPDATE tasks SET status_id=$1,title=$2,description=$3,priority=$4,start_date=$5,due_date=$6,updated_at=now() WHERE id=$7 AND project_id=$8`,
+    [sid,required(b.title,'Tâche',200),str(b.description).slice(0,4000),priority(b.priority),optionalDate(b.startDate),optionalDate(b.dueDate),taskId,pid]
+   );
+   await conn.query('COMMIT');
+  } catch(e) {
+   await conn.query('ROLLBACK');
+   throw e;
+  } finally {
+   conn.release();
+  }
   return send(res,200,{ok:true});
  }
  const taskSub=idFrom(path,/^\/api\/data\/tasks\/([a-f\d-]{36})\/subtasks$/i);

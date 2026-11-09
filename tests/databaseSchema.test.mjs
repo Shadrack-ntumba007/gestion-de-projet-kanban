@@ -28,7 +28,7 @@ function seedMinimal(db) {
 test('schéma SQLite v2 : tables et index nécessaires', () => {
   const db = createDb();
   try {
-    assert.equal(DATABASE_VERSION, 4);
+    assert.equal(DATABASE_VERSION, 5);
     const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all().map(x=>x.name);
     for(const name of ['users','workspaces','projects','project_members','statuses','tasks','task_assignees','subtasks','comments','notifications','task_activity']) assert.ok(tables.includes(name), name);
     assert.equal(db.prepare('PRAGMA foreign_keys').get().foreign_keys, 1);

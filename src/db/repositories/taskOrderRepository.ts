@@ -1,6 +1,7 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 import type { AppSnapshot } from '../../types/models';
 import { loadSnapshot } from './snapshotRepository';
+import { createId } from '../../utils/ids';
 
 /**
  * Ordre des cartes : table additionnelle, sans modification des migrations
@@ -62,7 +63,9 @@ export async function moveLocalTask(
   db: SQLiteDatabase,
   taskId: string,
   statusId: string,
-  beforeTaskId: string | null = null
+  beforeTaskId: string | null,
+  userId: string,
+  reason?: string
 ): Promise<void> {
   await ensureTaskOrder(db);
   await db.withExclusiveTransactionAsync(async tx => {
@@ -71,12 +74,49 @@ export async function moveLocalTask(
     );
     if (!task) throw new Error('Tâche introuvable.');
 
-    const target = await tx.getFirstAsync<{ id: string }>(
-      'SELECT id FROM statuses WHERE id=? AND project_id=?',
+    const target = await tx.getFirstAsync<{ id: string; name: string }>(
+      'SELECT id, name FROM statuses WHERE id=? AND project_id=?',
       statusId, task.project_id
     );
     if (!target) throw new Error('État hors de ce projet.');
 
+    // Validation obligatoire, dans la même transaction que le déplacement.
+    if (task.status_id !== statusId) {
+      const from = await tx.getFirstAsync<{name:string}>(
+        'SELECT name FROM statuses WHERE id=? AND project_id=?',
+        task.status_id, task.project_id
+      );
+      const member = await tx.getFirstAsync<{role:string}>(
+        'SELECT role FROM project_members WHERE project_id=? AND user_id=?',
+        task.project_id, userId
+      );
+      if (!from) throw new Error('État source introuvable.');
+      if (!member || member.role === 'viewer') {
+        throw new Error('Droits insuffisants pour modifier cette tâche.');
+      }
+      const responsible = member.role === 'owner' || member.role === 'admin';
+      const forward =
+        (from.name === 'À faire' && target.name === 'En cours') ||
+        (from.name === 'En cours' && target.name === 'À valider');
+      if (!forward) {
+        if (from.name === 'À valider' && target.name === 'Terminé') {
+          if (!responsible) throw new Error('Seul un responsable peut approuver.');
+        } else if (from.name === 'À valider' && target.name === 'En cours') {
+          if (!responsible) throw new Error('Seul un responsable peut demander une correction.');
+          const message = reason?.trim() ?? '';
+          if (!message || message.length > 2500) {
+            throw new Error('Justification obligatoire (1 à 2500 caractères).');
+          }
+          await tx.runAsync(
+            'INSERT INTO comments(id,task_id,author_id,body,created_at) VALUES(?,?,?,?,?)',
+            createId('comment'), taskId, userId,
+            'Correction demandée : ' + message, new Date().toISOString()
+          );
+        } else {
+          throw new Error('Transition interdite : suivez À faire → En cours → À valider → Terminé.');
+        }
+      }
+    }
     const idsIn = async (sid: string): Promise<string[]> => {
       const rows = await tx.getAllAsync<TaskIdRow>(`
         SELECT t.id FROM tasks t

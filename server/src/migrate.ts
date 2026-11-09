@@ -5,6 +5,7 @@ const migrations = [
   [1,'001_init.sql'],
   [2,'002_shared_workspace.sql'],
   [4,'004_kanban_task_order.sql'],
+  [5,'005_kanban_review_status.sql'],
 ] as const;
 const conn=await pool.connect();
 try{
