@@ -80,7 +80,7 @@ type DataValue = {
 
   // KANBAN-02 :
   // Déplacer une tâche existante vers un autre état.
-  moveTask:(taskId:string,statusId:string,beforeTaskId?:string|null)=>Promise<void>;
+  moveTask: (taskId: string, statusId: string, beforeTaskId?: string | null, reason?: string) => Promise<void>;
 
   removeTask: (id: string) => Promise<void>;
 
@@ -291,6 +291,11 @@ export function DataProvider({
 
       saveTask: async (id, task) => {
         requireEdit(task.projectId);
+        const existing = data?.tasks.find(item => item.id === id);
+        if (!existing) throw new Error('Tâche introuvable.');
+        if (existing.statusId !== task.statusId) {
+          throw new Error('Utilisez les actions du workflow pour changer le statut.');
+        }
 
         await changed(() =>
           remoteMode
@@ -303,7 +308,7 @@ export function DataProvider({
       // KANBAN-02 : DÉPLACEMENT D'UNE TÂCHE
       // =============================================
 
-      moveTask: async (taskId: string, statusId: string, beforeTaskId: string | null = null) => {
+      moveTask: async (taskId: string, statusId: string, beforeTaskId: string | null = null, reason?: string) => {
         const task = data?.tasks.find(item => item.id === taskId);
         if (!task) throw new Error('Tâche introuvable.');
         requireEdit(task.projectId);
@@ -311,8 +316,8 @@ export function DataProvider({
         if (!target) throw new Error('État de destination invalide.');
         if (beforeTaskId !== null && beforeTaskId === taskId) throw new Error('Position invalide.');
         await changed(() => remoteMode
-          ? remote.moveRemoteTask(taskId, statusId, beforeTaskId)
-          : moveLocalTask(db, taskId, statusId, beforeTaskId)
+          ? remote.moveRemoteTask(taskId, statusId, beforeTaskId, reason)
+          : moveLocalTask(db, taskId, statusId, beforeTaskId, userId, reason)
         );
       },
 

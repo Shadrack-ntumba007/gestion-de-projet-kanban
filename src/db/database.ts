@@ -13,6 +13,8 @@ import {
 } from '../data/demoData';
 import { DATABASE_VERSION, SCHEMA_V1, SCHEMA_V2, SCHEMA_V3 } from './schema';
 
+import {createId} from '../utils/ids';
+
 export const DATABASE_NAME = 'taskify-local.db';
 
 /**
@@ -152,5 +154,35 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase): Promise<void> {
       }
     });
     await db.execAsync('PRAGMA user_version = 4');
+    currentVersion = 4;
+  }
+
+  // V5 : ajout de À valider sans supprimer les colonnes ni déplacer les tâches.
+  if (currentVersion === 4) {
+    await db.withExclusiveTransactionAsync(async tx => {
+      const projects = await tx.getAllAsync<{id:string}>('SELECT id FROM projects');
+      for (const project of projects) {
+        const statuses = await tx.getAllAsync<{name:string;position:number}>(
+          'SELECT name, position FROM statuses WHERE project_id=?', project.id
+        );
+        if (statuses.some(status => status.name.trim() === 'À valider')) continue;
+        const doing = statuses.find(status => status.name.trim() === 'En cours');
+        const done = statuses.find(status => status.name.trim() === 'Terminé');
+        if (!doing || !done || done.position <= doing.position) {
+          console.warn(`SQLite V5 : workflow personnalisé non modifié dans ${project.id}`);
+          continue;
+        }
+        await tx.runAsync(
+          'UPDATE statuses SET position=position+1 WHERE project_id=? AND position>=?',
+          project.id, done.position
+        );
+        await tx.runAsync(
+          'INSERT INTO statuses(id,project_id,name,color,position) VALUES(?,?,?,?,?)',
+          createId('status'), project.id, 'À valider', '#FFE7B5', done.position
+        );
+      }
+      await tx.execAsync('PRAGMA user_version = 5');
+    });
+    currentVersion = 5;
   }
 }

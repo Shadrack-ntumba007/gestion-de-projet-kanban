@@ -4,7 +4,7 @@
  * V2 étend le modèle sans recréer ni supprimer les données des téléphones déjà initialisés.
  * Ne jamais modifier V1 après publication : créer V3, V4… pour toute évolution.
  */
-export const DATABASE_VERSION = 4;
+export const DATABASE_VERSION = 5;
 
 export const SCHEMA_V1 = String.raw`
  CREATE TABLE IF NOT EXISTS workspaces(id TEXT PRIMARY KEY,name TEXT NOT NULL,owner_id TEXT NOT NULL);
