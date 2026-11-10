@@ -1,3 +1,4 @@
+import {handleEmailInvitations} from './emailInvitations.ts';
 import type {IncomingMessage,ServerResponse} from 'node:http';
 import {pool} from './db.ts';
 import {HttpError,send,body,str,validUuid,required,priority,optionalDate,isoDate} from './http.ts';
@@ -57,6 +58,7 @@ async function snapshot(user:Identity){
 function idFrom(path:string,expr:RegExp){return path.match(expr)?.[1]??null;}
 export async function handleKanban(req:IncomingMessage,res:ServerResponse,user:Identity,path:string):Promise<void>{
  const m=req.method;const uid=user.id;
+ if(await handleEmailInvitations(req,res,user,path))return;
  if(path==='/api/data/snapshot'&&m==='GET'){return send(res,200,{data:await snapshot(user)});}
  if(path==='/api/data/projects'&&m==='POST'){
   const b=await body(req);const title=required(b.title,'Titre du projet',200),description=str(b.description).slice(0,4000),icon=str(b.icon).slice(0,16)||'💻';
