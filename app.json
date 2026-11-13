@@ -7,11 +7,6 @@
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "icon": "./assets/icon.png",
-    "splash": {
-      "image": "./assets/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#F9F6F7"
-    },
     "ios": {
       "supportsTablet": true
     },
@@ -19,14 +14,25 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#F9F6F7"
-      }
+      },
+      "package": "com.shadrack_ntumba.gestiondeprojetkanban"
     },
     "plugins": [
-      "expo-sqlite",
-      "expo-secure-store"
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash.png",
+          "imageWidth": 200,
+          "backgroundColor": "#ffffff"
+        }
+      ],
+      "expo-sqlite"
     ],
     "extra": {
-      "mode": "local-demo"
+      "mode": "local-demo",
+      "eas": {
+        "projectId": "d08a7319-9218-44d7-9102-38f39fc9660b"
+      }
     }
   }
 }
