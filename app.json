@@ -19,11 +19,20 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#F9F6F7"
-      }
+      },
+      "package": "com.arymanga.gestiondeprojetkanban"
     },
     "plugins": [
       "expo-sqlite",
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Taskify souhaite acc?der ? vos photos de profil.",
+          "cameraPermission": "Taskify souhaite utiliser votre cam?ra pour votre photo de profil.",
+          "microphonePermission": false
+        }
+      ]
     ],
     "extra": {
       "mode": "local-demo"

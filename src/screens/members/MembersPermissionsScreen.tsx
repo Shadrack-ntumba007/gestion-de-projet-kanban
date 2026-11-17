@@ -9,7 +9,8 @@ import {Surface} from '../../components/ui/Surface';
 import {Avatar} from '../../components/ui/Avatar';
 import {Button} from '../../components/ui/Button';
 import {Segmented} from '../../components/ui/Segmented';
-import {palette} from '../../constants/theme';
+import {type ThemePalette} from '../../constants/theme';
+import {useAppTheme} from '../../hooks/useAppTheme';
 import {useAuth} from '../../context/AuthContext';
 import {useData} from '../../context/DataContext';
 import {useProject} from '../../hooks/useProject';
@@ -18,6 +19,9 @@ import {canManageMembers} from '../../utils/permissions';
 import type {AppStackParamList} from '../../types/navigation';
 import type {ProjectRole} from '../../types/models';
 export default function MembersPermissionsScreen(){
+ const {palette}=useAppTheme();
+ const s=makeThemeStyles_s(palette);
+
  const db=useSQLiteContext();
  const {params}=useRoute<RouteProp<AppStackParamList,'MembersPermissions'>>();
  const nav=useAppNavigation(),{mode}=useAuth(),{data,setMemberRole,roleFor,reload}=useData();
@@ -61,4 +65,4 @@ export default function MembersPermissionsScreen(){
   <Text style={s.muted}>{mode==='remote'?'Aucun e-mail automatique n’est envoyé. L’invité trouve son invitation sur son téléphone et utilise le code privé.':'Les données locales ne se synchronisent pas entre téléphones.'}</Text>
  </Screen>;
 }
-const s=StyleSheet.create({title:{fontSize:18,fontWeight:'700',color:palette.ink},muted:{color:palette.mutedDark,marginTop:5,fontSize:12},search:{marginTop:24,marginBottom:12,minHeight:51,backgroundColor:palette.subtle,borderRadius:17,padding:14,fontSize:14,color:palette.ink},label:{fontWeight:'700',color:palette.mutedDark,marginTop:26,marginBottom:8,letterSpacing:1},member:{flexDirection:'row',alignItems:'center',gap:10},memberName:{color:palette.ink,fontWeight:'700',fontSize:15},role:{color:palette.primaryDark,backgroundColor:palette.subtle,borderRadius:14,padding:8,fontSize:12}});
+const makeThemeStyles_s=(palette:ThemePalette)=>StyleSheet.create({title:{fontSize:18,fontWeight:'700',color:palette.ink},muted:{color:palette.mutedDark,marginTop:5,fontSize:12},search:{marginTop:24,marginBottom:12,minHeight:51,backgroundColor:palette.subtle,borderRadius:17,padding:14,fontSize:14,color:palette.ink},label:{fontWeight:'700',color:palette.mutedDark,marginTop:26,marginBottom:8,letterSpacing:1},member:{flexDirection:'row',alignItems:'center',gap:10},memberName:{color:palette.ink,fontWeight:'700',fontSize:15},role:{color:palette.primaryDark,backgroundColor:palette.subtle,borderRadius:14,padding:8,fontSize:12}});

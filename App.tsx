@@ -1,3 +1,4 @@
+import {useAppTheme} from './src/hooks/useAppTheme';
 import React from 'react';
 import {StatusBar} from 'expo-status-bar';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
@@ -8,5 +9,10 @@ import {DataProvider} from './src/context/DataContext';
 import {DATABASE_NAME,migrateDbIfNeeded} from './src/db/database';
 import RootNavigator from './src/navigation/RootNavigator';
 export default function App(){return <SafeAreaProvider><SQLiteProvider databaseName={DATABASE_NAME} onInit={migrateDbIfNeeded}>
- <AuthProvider><PreferencesProvider><DataProvider><StatusBar style="dark"/><RootNavigator/></DataProvider></PreferencesProvider></AuthProvider>
+ <AuthProvider><PreferencesProvider><DataProvider><ThemedStatusBar/><RootNavigator/></DataProvider></PreferencesProvider></AuthProvider>
  </SQLiteProvider></SafeAreaProvider>;}
+
+function ThemedStatusBar(){
+ const {isDark}=useAppTheme();
+ return <StatusBar style={isDark?'light':'dark'}/>;
+}

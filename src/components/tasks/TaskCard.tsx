@@ -1,7 +1,8 @@
 import React, { useEffect, useRef } from 'react';
 import { PanResponder, StyleSheet, Text, View } from 'react-native';
 import type { Task } from '../../types/models';
-import { palette, radius } from '../../constants/theme';
+import {radius,type ThemePalette} from '../../constants/theme';
+import {useAppTheme} from '../../hooks/useAppTheme';
 import { PriorityChip } from '../ui/Chips';
 import { formatShortDate } from '../../utils/taskMetrics';
 
@@ -18,6 +19,9 @@ type Props = {
 };
 
 export function TaskCard(props: Props) {
+ const {palette}=useAppTheme();
+ const s=makeThemeStyles_s(palette);
+
   // Les callbacks sont actualises sans recréer le gestionnaire tactile.
   const callbacks = useRef(props);
   callbacks.current = props;
@@ -136,7 +140,7 @@ export function TaskCard(props: Props) {
   );
 }
 
-const s = StyleSheet.create({
+const makeThemeStyles_s = (palette:ThemePalette)=>StyleSheet.create({
   card: {
     backgroundColor: palette.white,
     padding: 14,

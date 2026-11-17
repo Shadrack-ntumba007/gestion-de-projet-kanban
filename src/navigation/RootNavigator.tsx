@@ -1,10 +1,10 @@
 import React from 'react';
-import {NavigationContainer} from '@react-navigation/native';
+import {NavigationContainer,DarkTheme,DefaultTheme} from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
 import {Ionicons} from '@expo/vector-icons';
 import type {AppStackParamList,AuthStackParamList,MainTabsParamList} from '../types/navigation';
-import {palette} from '../constants/theme';
+import {useAppTheme} from '../hooks/useAppTheme';
 import {useAuth} from '../context/AuthContext';
 import SplashScreen from '../screens/SplashScreen';
 import LoginScreen from '../screens/auth/LoginScreen';
@@ -45,7 +45,7 @@ function AuthNavigator(){return <AuthStack.Navigator screenOptions={screenOption
  <AuthStack.Screen name="Privacy">{()=> <LegalPlaceholderScreen type="privacy"/>}</AuthStack.Screen>
  </AuthStack.Navigator>;}
 const tabIcons:Record<keyof MainTabsParamList,React.ComponentProps<typeof Ionicons>['name']>={Home:'home-outline',MyTasks:'checkbox-outline',Notifications:'notifications-outline',Profile:'person-outline'};
-function MainTabs(){return <Tabs.Navigator screenOptions={({route})=>({headerShown:false,tabBarActiveTintColor:palette.primary,tabBarInactiveTintColor:palette.mutedDark,tabBarStyle:{height:64,paddingBottom:7,backgroundColor:palette.page,borderTopColor:palette.border},tabBarLabelStyle:{fontSize:12},tabBarIcon:({color,size})=><Ionicons name={tabIcons[route.name]} color={color} size={size}/>})}>
+function MainTabs(){const {palette}=useAppTheme();return <Tabs.Navigator screenOptions={({route})=>({headerShown:false,tabBarActiveTintColor:palette.primary,tabBarInactiveTintColor:palette.mutedDark,tabBarHideOnKeyboard:true,tabBarStyle:{backgroundColor:palette.page,borderTopColor:palette.border},tabBarLabelStyle:{fontSize:12},tabBarIcon:({color,size})=><Ionicons name={tabIcons[route.name]} color={color} size={size}/>})}>
  <Tabs.Screen name="Home" component={HomeScreen} options={{title:'Accueil'}}/>
  <Tabs.Screen name="MyTasks" component={MyTasksScreen} options={{title:'Mes tâches'}}/>
  <Tabs.Screen name="Notifications" component={NotificationsScreen} options={{title:'Notifications'}}/>
@@ -72,4 +72,22 @@ function AppNavigator(){return <AppStack.Navigator screenOptions={screenOptions}
  <AppStack.Screen name="Filters" component={FiltersScreen}/>
  <AppStack.Screen name="NotificationSettings" component={NotificationSettingsScreen}/>
  </AppStack.Navigator>;}
-export default function RootNavigator(){const{isAuthenticated,loading}=useAuth();if(loading)return <SplashScreen/>;return <NavigationContainer>{isAuthenticated?<AppNavigator/>:<AuthNavigator/>}</NavigationContainer>;}
+export default function RootNavigator(){
+ const {isAuthenticated,loading}=useAuth();
+ const {isDark,palette}=useAppTheme();
+ const base=isDark?DarkTheme:DefaultTheme;
+ const navigationTheme={
+  ...base,
+  colors:{
+   ...base.colors,
+   primary:palette.primary,
+   background:palette.page,
+   card:palette.surface,
+   text:palette.ink,
+   border:palette.border,
+   notification:palette.danger
+  }
+ };
+ if(loading)return <SplashScreen/>;
+ return <NavigationContainer theme={navigationTheme}>{isAuthenticated?<AppNavigator/>:<AuthNavigator/>}</NavigationContainer>;
+}

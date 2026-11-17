@@ -6,12 +6,16 @@ import {Screen} from '../../components/ui/Screen';
 import {Avatar} from '../../components/ui/Avatar';
 import {ProjectCard} from '../../components/projects/ProjectCard';
 import {Button} from '../../components/ui/Button';
-import {palette,radius} from '../../constants/theme';
+import {radius,type ThemePalette} from '../../constants/theme';
+import {useAppTheme} from '../../hooks/useAppTheme';
 import {useData} from '../../context/DataContext';
 import {useAppNavigation} from '../../hooks/useAppNavigation';
 import {runtime} from '../../config/runtime';
 import {formatShortDate} from '../../utils/taskMetrics';
 export default function HomeScreen(){
+ const {palette}=useAppTheme();
+ const s=makeThemeStyles_s(palette);
+
  const {data,syncError,reload}=useData(),{user,mode}=useAuth(),nav=useAppNavigation(),[query,setQuery]=useState('');
  const displayUser=user??data?.users.find(u=>u.id===runtime.demoUserId);
  const projects=(data?.projects??[]).filter(p=>p.title.toLowerCase().includes(query.trim().toLowerCase()));
@@ -31,4 +35,4 @@ export default function HomeScreen(){
  <Button title="＋ Nouveau projet" onPress={()=>nav.navigate('NewProject')}/>
  </Screen>;
 }
-const s=StyleSheet.create({greet:{marginTop:12,marginBottom:25,flexDirection:'row',justifyContent:'space-between',alignItems:'center'},mutedLarge:{fontSize:22,color:palette.muted},name:{fontSize:28,fontWeight:'800',color:palette.ink},search:{height:60,backgroundColor:palette.subtle,borderRadius:radius.md,flexDirection:'row',alignItems:'center',paddingHorizontal:15,gap:12},section:{fontSize:20,fontWeight:'700',color:palette.ink,marginTop:32,marginBottom:16},sectionRow:{flexDirection:'row',justifyContent:'space-between',alignItems:'center'},feature:{width:265,minHeight:170,borderRadius:radius.lg,padding:18,justifyContent:'space-between'},featureTitle:{fontSize:20,fontWeight:'700',color:palette.ink},featureMeta:{color:palette.mutedDark,marginTop:6},counter:{color:palette.muted},});
+const makeThemeStyles_s=(palette:ThemePalette)=>StyleSheet.create({greet:{marginTop:12,marginBottom:25,flexDirection:'row',justifyContent:'space-between',alignItems:'center'},mutedLarge:{fontSize:22,color:palette.muted},name:{fontSize:28,fontWeight:'800',color:palette.ink},search:{height:60,backgroundColor:palette.subtle,borderRadius:radius.md,flexDirection:'row',alignItems:'center',paddingHorizontal:15,gap:12},section:{fontSize:20,fontWeight:'700',color:palette.ink,marginTop:32,marginBottom:16},sectionRow:{flexDirection:'row',justifyContent:'space-between',alignItems:'center'},feature:{width:265,minHeight:170,borderRadius:radius.lg,padding:18,justifyContent:'space-between'},featureTitle:{fontSize:20,fontWeight:'700',color:palette.ink},featureMeta:{color:palette.mutedDark,marginTop:6},counter:{color:palette.muted},});
