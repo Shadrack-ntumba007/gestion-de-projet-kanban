@@ -4,11 +4,15 @@ import {useFocusEffect} from '@react-navigation/native';
 import {Screen} from '../../components/ui/Screen';
 import {Surface} from '../../components/ui/Surface';
 import {Button} from '../../components/ui/Button';
-import {palette} from '../../constants/theme';
+import {type ThemePalette} from '../../constants/theme';
+import {useAppTheme} from '../../hooks/useAppTheme';
 import {useAuth} from '../../context/AuthContext';
 import {useData} from '../../context/DataContext';
 import {receiveInvitations,respondInvitation,type RemoteInvitation} from '../../services/collaborationService';
 export default function InvitationsInboxScreen(){
+ const {palette}=useAppTheme();
+ const s=makeThemeStyles_s(palette);
+
  const {mode}=useAuth(),{reload}=useData();
  const [items,setItems]=useState<RemoteInvitation[]>([]),[codes,setCodes]=useState<Record<string,string>>({}),[busy,setBusy]=useState(false),[error,setError]=useState('');
  const refresh=useCallback(async()=>{try{setItems((await receiveInvitations()).invitations);setError('');}catch(e){setError(e instanceof Error?e.message:'Erreur réseau.');}},[]);
@@ -35,4 +39,4 @@ export default function InvitationsInboxScreen(){
   </>}
  </Screen>;
 }
-const s=StyleSheet.create({heading:{fontSize:18,fontWeight:'700',color:palette.ink},info:{color:palette.mutedDark,marginVertical:12,lineHeight:22},error:{color:palette.danger,marginVertical:8},input:{backgroundColor:palette.subtle,borderRadius:12,padding:15,color:palette.ink,marginVertical:12}});
+const makeThemeStyles_s=(palette:ThemePalette)=>StyleSheet.create({heading:{fontSize:18,fontWeight:'700',color:palette.ink},info:{color:palette.mutedDark,marginVertical:12,lineHeight:22},error:{color:palette.danger,marginVertical:8},input:{backgroundColor:palette.subtle,borderRadius:12,padding:15,color:palette.ink,marginVertical:12}});

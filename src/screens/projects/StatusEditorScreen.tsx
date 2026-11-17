@@ -5,11 +5,15 @@ import {Screen} from '../../components/ui/Screen';
 import {Surface} from '../../components/ui/Surface';
 import {Button} from '../../components/ui/Button';
 import {Field} from '../../components/ui/Field';
-import {palette,statusColors} from '../../constants/theme';
+import {statusColors,type ThemePalette} from '../../constants/theme';
+import {useAppTheme} from '../../hooks/useAppTheme';
 import {useProject} from '../../hooks/useProject';
 import {useData} from '../../context/DataContext';
 import type {AppStackParamList} from '../../types/navigation';
 export default function StatusEditorScreen(){
+ const {palette}=useAppTheme();
+ const s=makeThemeStyles_s(palette);
+
  const {params}=useRoute<RouteProp<AppStackParamList,'StatusEditor'>>(),{statuses,tasks}=useProject(params.projectId),{createStatus,saveStatus,deleteStatus}=useData();
  const [name,setName]=useState(''),[color,setColor]=useState<string>(statusColors[3]),[editId,setEditId]=useState<string|null>(null);
  const submit=async()=>{try{if(editId)await saveStatus(editId,name,color);else await createStatus(params.projectId,name,color);setName('');setEditId(null);}catch(e){Alert.alert('Erreur',e instanceof Error?e.message:'Erreur.');}};
@@ -25,4 +29,4 @@ export default function StatusEditorScreen(){
  </Surface>)}<Text style={s.desc}>Le glisser-déposer de réorganisation est visible dans la maquette mais reste à développer.</Text>
  </Screen>;
 }
-const s=StyleSheet.create({desc:{color:palette.mutedDark,lineHeight:22,marginBottom:18},label:{fontSize:17,fontWeight:'700',marginTop:14,marginBottom:12,color:palette.ink},colors:{flexDirection:'row',flexWrap:'wrap',gap:12,marginBottom:14},color:{height:40,width:40,borderRadius:20,alignItems:'center',justifyContent:'center'},preview:{alignSelf:'flex-end',paddingHorizontal:15,paddingVertical:8,borderRadius:30,marginTop:9,fontWeight:'700',color:palette.ink},statusRow:{flexDirection:'row',alignItems:'center',gap:12},dot:{width:13,height:13,borderRadius:7},statusName:{color:palette.ink,fontSize:16,fontWeight:'700'},link:{color:palette.primaryDark,fontWeight:'600'}});
+const makeThemeStyles_s=(palette:ThemePalette)=>StyleSheet.create({desc:{color:palette.mutedDark,lineHeight:22,marginBottom:18},label:{fontSize:17,fontWeight:'700',marginTop:14,marginBottom:12,color:palette.ink},colors:{flexDirection:'row',flexWrap:'wrap',gap:12,marginBottom:14},color:{height:40,width:40,borderRadius:20,alignItems:'center',justifyContent:'center'},preview:{alignSelf:'flex-end',paddingHorizontal:15,paddingVertical:8,borderRadius:30,marginTop:9,fontWeight:'700',color:palette.ink},statusRow:{flexDirection:'row',alignItems:'center',gap:12},dot:{width:13,height:13,borderRadius:7},statusName:{color:palette.ink,fontSize:16,fontWeight:'700'},link:{color:palette.primaryDark,fontWeight:'600'}});

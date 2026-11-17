@@ -18,7 +18,8 @@ import { Avatar } from '../../components/ui/Avatar';
 import { Button } from '../../components/ui/Button';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { PriorityChip } from '../../components/ui/Chips';
-import { palette, radius } from '../../constants/theme';
+import {radius,type ThemePalette} from '../../constants/theme';
+import {useAppTheme} from '../../hooks/useAppTheme';
 import { useProject } from '../../hooks/useProject';
 import { useData } from '../../context/DataContext';
 import { useAppNavigation } from '../../hooks/useAppNavigation';
@@ -37,6 +38,9 @@ type CardLayout = { y: number; height: number };
 type DropLocation = { statusId: string; index: number };
 
 export default function ProjectBoardScreen() {
+ const {palette}=useAppTheme();
+ const s=makeThemeStyles_s(palette);
+
   const { params } = useRoute<RouteProp<AppStackParamList, 'ProjectBoard'>>();
   const nav = useAppNavigation();
   const { project, statuses, tasks, members } = useProject(params.projectId);
@@ -456,7 +460,7 @@ await moveTask(task.id, target.statusId, beforeTaskId);
   );
 }
 
-const s = StyleSheet.create({
+const makeThemeStyles_s = (palette:ThemePalette)=>StyleSheet.create({
   root: { flex: 1 },
   pageScroll: { flex: 1 },
   pageContent: { paddingBottom: 64 },

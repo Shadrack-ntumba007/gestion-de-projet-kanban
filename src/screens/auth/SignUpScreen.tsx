@@ -1,21 +1,25 @@
 import React,{useState} from 'react';
-import {Text,ScrollView,StyleSheet,Alert,Pressable} from 'react-native';
+import {Text,ScrollView,StyleSheet,Alert,Pressable,KeyboardAvoidingView,Platform} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {Field} from '../../components/ui/Field';
 import {Button} from '../../components/ui/Button';
-import {palette} from '../../constants/theme';
+import {type ThemePalette} from '../../constants/theme';
+import {useAppTheme} from '../../hooks/useAppTheme';
 import {useAuthNavigation} from '../../hooks/useAppNavigation';
 import {useAuth} from '../../context/AuthContext';
 import {validEmail,validPassword} from '../../utils/validation';
 import {apiConfigured} from '../../config/api';
 export default function SignUpScreen(){
+ const {palette}=useAppTheme();
+ const s=makeThemeStyles_s(palette);
+
  const nav=useAuthNavigation(),{signUp}=useAuth();
  const[name,setName]=useState(''),[email,setEmail]=useState(''),[pass,setPass]=useState(''),[confirm,setConfirm]=useState(''),[accept,setAccept]=useState(false),[busy,setBusy]=useState(false);
  const submit=async()=>{
   if(!name.trim()||!validEmail(email)||!validPassword(pass)||pass!==confirm||!accept){Alert.alert('Formulaire incomplet','Vérifiez le nom, l’email, les 8 caractères minimum, la confirmation et les conditions.');return;}
   setBusy(true);try{await signUp(name,email,pass);}catch(e){Alert.alert('Inscription impossible',e instanceof Error?e.message:'Erreur');}finally{setBusy(false);}
  };
- return <SafeAreaView style={{flex:1,backgroundColor:palette.page}}><ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled"><Pressable onPress={()=>nav.goBack()}><Text style={s.link}>‹ Retour</Text></Pressable>
+ return <SafeAreaView style={{flex:1,backgroundColor:palette.page}}><KeyboardAvoidingView style={{flex:1}} behavior={Platform.OS==='ios'?'padding':undefined}><ScrollView style={{flex:1}} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag"><Pressable onPress={()=>nav.goBack()}><Text style={s.link}>‹ Retour</Text></Pressable>
  <Text style={s.logo}>● Taskify</Text><Text style={s.title}>Créer un compte</Text><Text style={s.desc}>{apiConfigured?'Créez un compte commun pour collaborer avec votre équipe.':'Compte local sur ce téléphone pour la démonstration.'}</Text>
  <Field label="Nom complet" value={name} onChangeText={setName} placeholder="Votre nom"/>
  <Field label="Adresse e-mail" value={email} onChangeText={setEmail} placeholder="nom@exemple.com" keyboardType="email-address"/>
@@ -26,6 +30,6 @@ export default function SignUpScreen(){
  <Text style={s.muted}>{apiConfigured?'Compte conservé sur le serveur partagé. Les invitations sont accessibles après connexion.':'Aucun e-mail envoyé. Compte uniquement sur cet appareil.'}</Text>
  <Pressable onPress={()=>nav.navigate('Terms')}><Text style={s.link}>Conditions générales à préparer</Text></Pressable>
  <Pressable onPress={()=>nav.navigate('Privacy')}><Text style={s.link}>Politique de confidentialité à préparer</Text></Pressable>
- </ScrollView></SafeAreaView>;
+ </ScrollView></KeyboardAvoidingView></SafeAreaView>;
 }
-const s=StyleSheet.create({content:{padding:28,paddingBottom:80},logo:{textAlign:'center',color:palette.primary,fontWeight:'800',marginTop:10},title:{fontSize:34,fontWeight:'800',marginTop:40,color:palette.ink},desc:{fontSize:17,color:palette.mutedDark,lineHeight:26,marginTop:12,marginBottom:30},agree:{color:palette.ink,lineHeight:25,marginBottom:30},muted:{color:palette.muted,fontSize:12,lineHeight:20,marginTop:15},link:{color:palette.primaryDark,fontWeight:'600',marginVertical:8}});
+const makeThemeStyles_s=(palette:ThemePalette)=>StyleSheet.create({content:{padding:28,paddingBottom:80},logo:{textAlign:'center',color:palette.primary,fontWeight:'800',marginTop:10},title:{fontSize:34,fontWeight:'800',marginTop:40,color:palette.ink},desc:{fontSize:17,color:palette.mutedDark,lineHeight:26,marginTop:12,marginBottom:30},agree:{color:palette.ink,lineHeight:25,marginBottom:30},muted:{color:palette.muted,fontSize:12,lineHeight:20,marginTop:15},link:{color:palette.primaryDark,fontWeight:'600',marginVertical:8}});

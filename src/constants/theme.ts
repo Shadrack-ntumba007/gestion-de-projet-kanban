@@ -16,3 +16,23 @@ export const priorityMeta = {
   high: { label:'Élevée', color:'#FFDDDA', text:'#8C1723' },
 } as const;
 export const statusColors = ['#D4E9E7','#E5DEFF','#FFDDDA','#5956EF','#E3DFDF','#C8C1FF'] as const;
+
+export type ThemePalette = Record<keyof typeof palette, string>;
+
+export const darkPalette: ThemePalette = {
+  primary:'#5956EF',
+  primaryDark:'#B7B4FF',
+  lilac:'#30284A',
+  mint:'#213B38',
+  rose:'#492A30',
+  page:'#111118',
+  surface:'#1E1E2A',
+  subtle:'#282835',
+  ink:'#F7F6FC',
+  muted:'#ABA8BC',
+  mutedDark:'#CCC9DC',
+  border:'#343442',
+  danger:'#FF858C',
+  warning:'#D9BBFF',
+  white:'#FFFFFF',
+};

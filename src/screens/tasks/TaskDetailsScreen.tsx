@@ -6,13 +6,17 @@ import {Surface} from '../../components/ui/Surface';
 import {Button} from '../../components/ui/Button';
 import {PriorityChip,StatusChip} from '../../components/ui/Chips';
 import {Avatar} from '../../components/ui/Avatar';
-import {palette,radius} from '../../constants/theme';
+import {radius,type ThemePalette} from '../../constants/theme';
+import {useAppTheme} from '../../hooks/useAppTheme';
 import {useData} from '../../context/DataContext';
 import {useTask} from '../../hooks/useTask';
 import {useAppNavigation} from '../../hooks/useAppNavigation';
 import {formatShortDate,taskCompletionPercent} from '../../utils/taskMetrics';
 import type {AppStackParamList} from '../../types/navigation';
 export default function TaskDetailsScreen(){
+ const {palette}=useAppTheme();
+ const s=makeThemeStyles_s(palette);
+
  const {params}=useRoute<RouteProp<AppStackParamList,'TaskDetails'>>(),nav=useAppNavigation(),{data,moveTask,roleFor,removeTask,setSubtask,addSubtask,addComment}=useData();
  const{task,subtasks,assignees,comments}=useTask(params.taskId),[comment,setComment]=useState(''),[newSub,setNewSub]=useState('');
  const [correctionOpen,setCorrectionOpen]=useState(false);
@@ -157,4 +161,4 @@ const target = availableStatuses.find(
  <Button title="Modifier la tâche" onPress={()=>nav.navigate('EditTask',{taskId:task.id})}/><Button title="Supprimer la tâche" variant="danger" onPress={onRemove}/>
  </Screen>;
 }
-const s=StyleSheet.create({top:{flexDirection:'row',justifyContent:'space-between',alignItems:'center',marginTop:4},id:{color:palette.muted,fontSize:12},link:{color:palette.primaryDark,fontWeight:'700'},heading:{fontSize:27,fontWeight:'800',color:palette.ink,marginTop:16},desc:{fontSize:16,color:palette.mutedDark,lineHeight:25,marginVertical:14},label:{color:palette.mutedDark,fontSize:15,marginTop:5,fontWeight:'600'},muted:{color:palette.muted,fontWeight:'400'},section:{flexDirection:'row',justifyContent:'space-between',alignItems:'center',marginTop:28},sectionTitle:{fontSize:19,fontWeight:'700',color:palette.ink,marginTop:16,marginBottom:12},progressBg:{height:7,backgroundColor:palette.border,borderRadius:99,marginTop:10,marginBottom:12},progressFill:{height:7,backgroundColor:palette.primary,borderRadius:99},subtask:{padding:11,backgroundColor:palette.subtle,borderRadius:radius.md,marginVertical:3,flexDirection:'row',gap:10,alignItems:'center'},subtaskText:{color:palette.ink,fontSize:14,flex:1},inputRow:{flexDirection:'row',alignItems:'center',gap:14,borderWidth:1,borderColor:palette.border,borderRadius:radius.pill,paddingHorizontal:14,minHeight:51,marginTop:12,marginBottom:16},input:{flex:1,color:palette.ink,minHeight:44}});
+const makeThemeStyles_s=(palette:ThemePalette)=>StyleSheet.create({top:{flexDirection:'row',justifyContent:'space-between',alignItems:'center',marginTop:4},id:{color:palette.muted,fontSize:12},link:{color:palette.primaryDark,fontWeight:'700'},heading:{fontSize:27,fontWeight:'800',color:palette.ink,marginTop:16},desc:{fontSize:16,color:palette.mutedDark,lineHeight:25,marginVertical:14},label:{color:palette.mutedDark,fontSize:15,marginTop:5,fontWeight:'600'},muted:{color:palette.muted,fontWeight:'400'},section:{flexDirection:'row',justifyContent:'space-between',alignItems:'center',marginTop:28},sectionTitle:{fontSize:19,fontWeight:'700',color:palette.ink,marginTop:16,marginBottom:12},progressBg:{height:7,backgroundColor:palette.border,borderRadius:99,marginTop:10,marginBottom:12},progressFill:{height:7,backgroundColor:palette.primary,borderRadius:99},subtask:{padding:11,backgroundColor:palette.subtle,borderRadius:radius.md,marginVertical:3,flexDirection:'row',gap:10,alignItems:'center'},subtaskText:{color:palette.ink,fontSize:14,flex:1},inputRow:{flexDirection:'row',alignItems:'center',gap:14,borderWidth:1,borderColor:palette.border,borderRadius:radius.pill,paddingHorizontal:14,minHeight:51,marginTop:12,marginBottom:16},input:{flex:1,color:palette.ink,minHeight:44}});
