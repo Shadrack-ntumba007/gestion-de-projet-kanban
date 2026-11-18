@@ -1,0 +1,99 @@
+
+name: Taskify iOS IPA (unsigned)
+
+on:
+  workflow_dispatch:
+    inputs:
+      api_url:
+        description: "URL de l'API Taskify"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  ios-ipa:
+    runs-on: macos-26
+    timeout-minutes: 120
+
+    env:
+      CI: "1"
+      EXPO_PUBLIC_TASKIFY_API_URL: ${{ inputs.api_url }}
+
+    steps:
+      - name: Recuperer le projet
+        uses: actions/checkout@v4
+
+      - name: Installer Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Installer les dependances
+        run: npm ci
+
+      - name: Generer le projet iOS
+        run: npx expo prebuild --platform ios --no-install
+
+      - name: Installer les pods
+        run: pod install --project-directory=ios
+
+      - name: Compiler sans signature
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+
+          workspaces=(ios/*.xcworkspace)
+          schemes=(ios/*.xcodeproj/xcshareddata/xcschemes/*.xcscheme)
+
+          if [[ ${#workspaces[@]} -ne 1 || ${#schemes[@]} -lt 1 ]]; then
+            echo "Projet ou scheme iOS introuvable"
+            exit 1
+          fi
+
+          WORKSPACE="${workspaces[0]}"
+          SCHEME=$(basename "${schemes[0]}" .xcscheme)
+
+          xcodebuild \
+            -workspace "$WORKSPACE" \
+            -scheme "$SCHEME" \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath "$RUNNER_TEMP/taskify-build" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build
+
+      - name: Creer IPA
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+
+          apps=("$RUNNER_TEMP"/taskify-build/Build/Products/Release-iphoneos/*.app)
+
+          if [[ ${#apps[@]} -ne 1 ]]; then
+            echo "Application iOS introuvable"
+            exit 1
+          fi
+
+          mkdir -p dist/Payload
+          cp -R "${apps[0]}" dist/Payload/
+
+          (
+            cd dist
+            zip -qry Taskify-unsigned.ipa Payload
+          )
+
+      - name: Publier IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: Taskify-ipa
+          path: dist/Taskify-unsigned.ipa
+          if-no-files-found: error
+
